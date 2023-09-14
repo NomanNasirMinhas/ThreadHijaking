@@ -81,7 +81,7 @@ int main()
 	THREADENTRY32 threadEntry;
 	CONTEXT context;
 
-	DWORD targetPID = 7632;
+	DWORD targetPID = startNotePad();
 	context.ContextFlags = CONTEXT_FULL;
 	threadEntry.dwSize = sizeof(THREADENTRY32);
 
